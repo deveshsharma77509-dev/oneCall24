@@ -21,6 +21,7 @@ The integration supports the following business operations:
 The integration uses the following Apex classes:
 
 | Apex Class | Responsibility |
+|---|---|
 | `OneCall24ApiService` | Main service class for fetching results, processing records, and resetting confirmations. |
 | `OneCall24ApiClient` | Handles HTTP requests, Named Credential, headers, and timeout configuration. |
 | `OneCall24Helper` | Handles JSON parsing, record preparation, error-log creation, bulk error logging, and log resolution. |
