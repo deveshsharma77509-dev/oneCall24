@@ -1,3 +1,13 @@
+/**
+ * @Class Name    : OneCall24ExceptionHandler
+ * @Author        : Devesh Sharma
+ * @Purpose       : Centralizes exception handling for
+ *                  OneCall24 integration.
+ * @Description   : Handles integration exceptions and manages
+ *                  error logging to maintain reliable API
+ *                  processing and troubleshooting.
+ */
+
 public class OneCall24ExceptionHandler {
 
     // Handle Callout Exception

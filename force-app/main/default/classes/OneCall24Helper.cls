@@ -1,3 +1,12 @@
+/**
+ * @Class Name    : OneCall24Helper
+ * @Author        : Devesh Sharma
+ * @Purpose       : Provides reusable utility methods.
+ * @Description   : Handles API response data conversion,
+ *                  error log creation, bulk error log insertion,
+ *                  text truncation and error log resolution.
+ */
+
 public class OneCall24Helper {
     // Convert API value to String
     public static String getString(Map<String, Object> data,String key){
@@ -43,9 +52,8 @@ public class OneCall24Helper {
         );
     }
 
-    // Save Error Logs in Bulk
-    public static void saveErrorLogs(
-        List<OneCall24_Error_Log__c> logs) {
+   
+    public static void saveErrorLogs(List<OneCall24_Error_Log__c> logs) {
         if (logs == null || logs.isEmpty()) {
             return;
         }

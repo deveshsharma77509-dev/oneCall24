@@ -1,3 +1,12 @@
+/**
+ * @Class Name    : OneCall24ApiClient
+ * @Author        : Devesh Sharma
+ * @Purpose       : Handles HTTP communication with OneCall24 APIs.
+ * @Description   : Manages GET Results, POST Confirm and POST
+ *                  Reset API requests using Named Credentials
+ *                  and Custom Metadata configurations.
+ */
+
 public class OneCall24ApiClient {
 
     // GET Results API

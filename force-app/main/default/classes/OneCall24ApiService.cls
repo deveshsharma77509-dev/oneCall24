@@ -1,3 +1,12 @@
+/**
+ * @Class Name    : OneCall24ApiService
+ * @Author        : Devesh Sharma
+ * @Purpose       : Manages the OneCall24 API integration process.
+ * @Description   : Handles API result processing, candidate
+ *                  synchronization, response parsing and
+ *                  Salesforce record operations.
+ */
+
 public class OneCall24ApiService {
     
     // GET Results API and Save Candidates
@@ -15,7 +24,8 @@ public class OneCall24ApiService {
             if (statusCode < 200 || statusCode >= 300) {
                 Boolean retryable = OneCall24ExceptionHandler.isRetryableStatusCode(statusCode);
                 OneCall24Helper.saveErrorLogs( new List<OneCall24_Error_Log__c>{OneCall24Helper.createErrorLog(
-                 null,'/results','GET /results',statusCode,'API Failure','GET API returned HTTP status ' + statusCode,responseBody,retryable ? 'Pending' : 'Not Required')
+                 null,'/results','GET /results',statusCode,'API Failure','GET API returned HTTP status ' + statusCode,responseBody,
+                    retryable ? 'Pending' : 'Not Required')
                     }
                 );
                 return;
@@ -80,7 +90,8 @@ public class OneCall24ApiService {
 
                 } catch (Exception ex) {
                     errorLogs.add(OneCall24Helper.createErrorLog(
-                       candidateRef,'/results','GET /results - Mapping',null,'Record Failure', ex.getMessage(),JSON.serialize(candidate),'Failed'));
+                       candidateRef,'/results','GET /results - Mapping',null,'Record Failure',
+                        ex.getMessage(),JSON.serialize(candidate),'Failed'));
                 }
             }
 

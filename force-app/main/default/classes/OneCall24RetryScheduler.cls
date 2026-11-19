@@ -1,3 +1,13 @@
+/**
+ * @Class Name    : OneCall24RetryScheduler
+ * @Author        : Devesh Sharma
+ * @Purpose       : Schedules retry processing for failed
+ *                  OneCall24 API operations.
+ * @Description   : Manages retry execution for previously failed
+ *                  integration operations based on their
+ *                  retry status and scheduling configuration.
+ */
+
 public class OneCall24RetryScheduler
     implements Schedulable {
     public void execute(SchedulableContext context) {

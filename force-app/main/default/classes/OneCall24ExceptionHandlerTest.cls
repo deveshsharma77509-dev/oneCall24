@@ -1,133 +1,336 @@
-@isTest
+@IsTest
 private class OneCall24ExceptionHandlerTest {
 
     private static final String OPERATION = 'Fetch Results';
-    private static final String ENDPOINT  = 'https://api.example.com/results';
+    private static final String ENDPOINT = '/results';
 
-    private static Integer logCount() {
-        return [SELECT COUNT() FROM OneCall24_Error_Log__c];
+    // Get error logs by candidate reference
+    private static List<OneCall24_Error_Log__c> getLogs(
+        Set<String> refs
+    ) {
+        return [
+            SELECT Id,
+                   Candidate_Reference__c,
+                   API_Endpoint__c,
+                   Operation__c,
+                   Error_Type__c,
+                   Error_Message__c,
+                   Retry_Status__c
+            FROM OneCall24_Error_Log__c
+            WHERE Candidate_Reference__c IN :refs
+        ];
     }
 
-    // ---------- handleCalloutException ----------
+    // Get logs without candidate references
+    private static List<OneCall24_Error_Log__c> getNullRefLogs() {
+        return [
+            SELECT Id,
+                   Candidate_Reference__c,
+                   Error_Type__c,
+                   Operation__c,
+                   API_Endpoint__c,
+                   Retry_Status__c
+            FROM OneCall24_Error_Log__c
+            WHERE Candidate_Reference__c = null
+        ];
+    }
 
-    @isTest
+    // Check active picklist value
+    private static Boolean isActivePicklistValue(
+        String fieldName,
+        String expectedValue
+    ) {
+
+        Schema.SObjectField fieldToken =
+            OneCall24_Error_Log__c.SObjectType.getDescribe()
+            .fields.getMap().get(fieldName);
+
+        if (fieldToken == null) {
+            return false;
+        }
+
+        for (Schema.PicklistEntry entry :
+            fieldToken.getDescribe().getPicklistValues()) {
+
+            if (entry.isActive() &&
+                entry.getValue() == expectedValue) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    // Validate picklist configuration
+    @IsTest
+    static void testRequiredPicklistValues() {
+
+        System.assert(
+            isActivePicklistValue(
+                'Error_Type__c',
+                'Callout Exception'
+            ),
+            'Add Callout Exception to Error_Type__c.'
+        );
+
+        System.assert(
+            isActivePicklistValue(
+                'Error_Type__c',
+                'Exception'
+            ),
+            'Add Exception to Error_Type__c.'
+        );
+
+        System.assert(
+            isActivePicklistValue(
+                'Retry_Status__c',
+                'Retry Scheduled'
+            ),
+            'Add Retry Scheduled to Retry_Status__c.'
+        );
+
+        System.assert(
+            isActivePicklistValue(
+                'Retry_Status__c',
+                'Not Required'
+            ),
+            'Add Not Required to Retry_Status__c.'
+        );
+    }
+
+    // Test Callout Exception with candidate references
+    @IsTest
     static void testHandleCalloutException_withCandidateRefs() {
-        List<String> refs = new List<String>{ 'REF-001', 'REF-002' };
-        Integer before = logCount();
 
         Test.startTest();
+
         OneCall24ExceptionHandler.handleCalloutException(
-            new CalloutException('Callout failed'), OPERATION, ENDPOINT, refs
+            new CalloutException('Callout failed'),
+            OPERATION,
+            ENDPOINT,
+            new List<String>{'TEST001', 'TEST002'}
         );
+
         Test.stopTest();
 
-        System.assertEquals(before + 2, logCount(), 'One log per candidate ref expected.');
-    }
+        List<OneCall24_Error_Log__c> logs =
+            getLogs(new Set<String>{'TEST001', 'TEST002'});
 
-    @isTest
-    static void testHandleCalloutException_nullRefs() {
-        Integer before = logCount();
+        System.assertEquals(2, logs.size());
 
-        Test.startTest();
-        OneCall24ExceptionHandler.handleCalloutException(
-            new CalloutException('Callout failed'), OPERATION, ENDPOINT, null
-        );
-        Test.stopTest();
+        for (OneCall24_Error_Log__c logRecord : logs) {
 
-        System.assertEquals(before + 1, logCount(), 'A single log expected when refs are null.');
-    }
+            System.assertEquals(
+                'Callout Exception',
+                logRecord.Error_Type__c
+            );
 
-    @isTest
-    static void testHandleCalloutException_emptyRefs() {
-        Integer before = logCount();
+            System.assertEquals(
+                OPERATION,
+                logRecord.Operation__c
+            );
 
-        Test.startTest();
-        OneCall24ExceptionHandler.handleCalloutException(
-            new CalloutException('Callout failed'), OPERATION, ENDPOINT, new List<String>()
-        );
-        Test.stopTest();
-
-        System.assertEquals(before + 1, logCount(), 'A single log expected when refs are empty.');
-    }
-
-    // ---------- handleException ----------
-
-    @isTest
-    static void testHandleException_withCandidateRefs() {
-        Integer before = logCount();
-
-        Test.startTest();
-        try {
-            Integer x = 1 / 0; // force a real exception so line number is populated
-        } catch (Exception e) {
-            OneCall24ExceptionHandler.handleException(
-                e, OPERATION, ENDPOINT, new List<String>{ 'REF-001', 'REF-002', 'REF-003' }
+            System.assertEquals(
+                ENDPOINT,
+                logRecord.API_Endpoint__c
             );
         }
-        Test.stopTest();
-
-        System.assertEquals(before + 3, logCount(), 'One log per candidate ref expected.');
     }
 
-    @isTest
-    static void testHandleException_nullRefs() {
-        Integer before = logCount();
+    // Test Callout Exception with null references
+    @IsTest
+    static void testHandleCalloutException_nullRefs() {
 
         Test.startTest();
-        try {
-            Integer x = 1 / 0;
-        } catch (Exception e) {
-            OneCall24ExceptionHandler.handleException(e, OPERATION, ENDPOINT, null);
-        }
+
+        OneCall24ExceptionHandler.handleCalloutException(
+            new CalloutException('Callout failed'),
+            OPERATION,
+            ENDPOINT,
+            null
+        );
+
         Test.stopTest();
 
-        System.assertEquals(before + 1, logCount(), 'A single log expected when refs are null.');
+        List<OneCall24_Error_Log__c> logs = getNullRefLogs();
+
+        System.assertEquals(1, logs.size());
+
+        System.assertEquals(
+            'Callout Exception',
+            logs[0].Error_Type__c
+        );
     }
 
-    // ---------- Retry configuration ----------
-    // Custom metadata records cannot be created in tests, so these tests
-    // read the org's 'Default' record and assert against it.
+    // Test Callout Exception with empty references
+    @IsTest
+    static void testHandleCalloutException_emptyRefs() {
 
-    @isTest
+        Test.startTest();
+
+        OneCall24ExceptionHandler.handleCalloutException(
+            new CalloutException('Callout failed'),
+            OPERATION,
+            ENDPOINT,
+            new List<String>()
+        );
+
+        Test.stopTest();
+
+        List<OneCall24_Error_Log__c> logs = getNullRefLogs();
+
+        System.assertEquals(1, logs.size());
+
+        System.assertEquals(
+            'Callout Exception',
+            logs[0].Error_Type__c
+        );
+    }
+
+    // Test Generic Exception with candidate references
+    @IsTest
+    static void testHandleException_withCandidateRefs() {
+
+        Test.startTest();
+
+        try {
+            Integer value = 1 / 0;
+        } catch (Exception ex) {
+
+            OneCall24ExceptionHandler.handleException(
+                ex,
+                OPERATION,
+                ENDPOINT,
+                new List<String>{
+                    'TEST003',
+                    'TEST004',
+                    'TEST005'
+                }
+            );
+        }
+
+        Test.stopTest();
+
+        List<OneCall24_Error_Log__c> logs =
+            getLogs(new Set<String>{
+                'TEST003',
+                'TEST004',
+                'TEST005'
+            });
+
+        System.assertEquals(3, logs.size());
+
+        for (OneCall24_Error_Log__c logRecord : logs) {
+
+            System.assertEquals(
+                'Exception',
+                logRecord.Error_Type__c
+            );
+
+            System.assert(
+                logRecord.Error_Message__c.contains('Line Number:')
+            );
+        }
+    }
+
+    // Test Generic Exception with null references
+    @IsTest
+    static void testHandleException_nullRefs() {
+
+        Test.startTest();
+
+        try {
+            Integer value = 1 / 0;
+        } catch (Exception ex) {
+
+            OneCall24ExceptionHandler.handleException(
+                ex,
+                OPERATION,
+                ENDPOINT,
+                null
+            );
+        }
+
+        Test.stopTest();
+
+        List<OneCall24_Error_Log__c> logs = getNullRefLogs();
+
+        System.assertEquals(1, logs.size());
+
+        System.assertEquals(
+            'Exception',
+            logs[0].Error_Type__c
+        );
+    }
+
+    // Test Retry Enabled
+    @IsTest
     static void testIsRetryEnabled() {
-        OneCall24_Settings__mdt settings = OneCall24_Settings__mdt.getInstance('Default');
-        Boolean expected = settings != null && settings.Retry_Enabled__c;
 
-        System.assertEquals(expected, OneCall24ExceptionHandler.isRetryEnabled(),
-            'isRetryEnabled should reflect the Default custom metadata record.');
+        OneCall24_Settings__mdt settings =
+            OneCall24_Settings__mdt.getInstance('Default');
+
+        Boolean expected =
+            settings != null &&
+            settings.Retry_Enabled__c;
+
+        System.assertEquals(
+            expected,
+            OneCall24ExceptionHandler.isRetryEnabled()
+        );
     }
 
-    @isTest
+    // Test Maximum Retry Count
+    @IsTest
     static void testGetMaxRetry() {
-        OneCall24_Settings__mdt settings = OneCall24_Settings__mdt.getInstance('Default');
-        Integer expected = (settings == null || settings.Max_Retry__c == null)
+
+        OneCall24_Settings__mdt settings =
+            OneCall24_Settings__mdt.getInstance('Default');
+
+        Integer expected =
+            (settings == null || settings.Max_Retry__c == null)
             ? 3
             : settings.Max_Retry__c.intValue();
 
-        System.assertEquals(expected, OneCall24ExceptionHandler.getMaxRetry(),
-            'getMaxRetry should reflect the Default custom metadata record (or 3 if unset).');
+        System.assertEquals(
+            expected,
+            OneCall24ExceptionHandler.getMaxRetry()
+        );
     }
 
-    @isTest
+    // Test Retryable HTTP Status Code
+    @IsTest
     static void testIsRetryableStatusCode() {
-        OneCall24_Settings__mdt settings = OneCall24_Settings__mdt.getInstance('Default');
 
-        // A code that should never be configured as retryable
-        System.assertEquals(false, OneCall24ExceptionHandler.isRetryableStatusCode(-1),
-            'An unconfigured status code must not be retryable.');
+        OneCall24_Settings__mdt settings =
+            OneCall24_Settings__mdt.getInstance('Default');
 
-        if (settings != null && settings.Retry_Enabled__c
-            && String.isNotBlank(settings.Retryable_Status_Codes__c)) {
-            // Every configured code should be reported as retryable
-            for (String code : settings.Retryable_Status_Codes__c.split(',')) {
-                System.assertEquals(true,
-                    OneCall24ExceptionHandler.isRetryableStatusCode(Integer.valueOf(code.trim())),
-                    'Configured status code ' + code.trim() + ' should be retryable.');
+        System.assertEquals(
+            false,
+            OneCall24ExceptionHandler.isRetryableStatusCode(-1)
+        );
+
+        if (settings != null &&
+            settings.Retry_Enabled__c &&
+            String.isNotBlank(settings.Retryable_Status_Codes__c)) {
+
+            for (String code :
+                settings.Retryable_Status_Codes__c.split(',')) {
+
+                System.assertEquals(
+                    true,
+                    OneCall24ExceptionHandler.isRetryableStatusCode(
+                        Integer.valueOf(code.trim())
+                    )
+                );
             }
+
         } else {
-            // Retry disabled or no codes configured: nothing is retryable
-            System.assertEquals(false, OneCall24ExceptionHandler.isRetryableStatusCode(503),
-                'No status code should be retryable when retry is disabled or unconfigured.');
+
+            System.assertEquals(
+                false,
+                OneCall24ExceptionHandler.isRetryableStatusCode(503)
+            );
         }
     }
 }

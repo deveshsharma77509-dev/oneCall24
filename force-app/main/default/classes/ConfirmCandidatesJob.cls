@@ -1,3 +1,13 @@
+/**
+ * @Class Name    : ConfirmCandidatesJob
+ * @Author        : Devesh Sharma
+ * @Purpose       : Handles asynchronous candidate confirmation
+ *                  processing through Salesforce.
+ * @Description   : Processes candidate confirmation requests
+ *                  and communicates with the OneCall24 API
+ *                  to confirm selected candidates.
+ */
+
 public class ConfirmCandidatesJob implements Queueable, Database.AllowsCallouts {
     
     private List<String> candidateRefs;
